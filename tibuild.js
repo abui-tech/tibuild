@@ -7,12 +7,6 @@
      - appceleratorにログイン済み
        => titanium login [email] [pass]
 
-     [あとで自動化したい]
-     sdk for yyc:
-     - smb://dvs-sv02/pub/Project/共有/コミュニティ開発チーム/abui/3.2.0.GA.YYC.zip
-     => ~/Library/Application Support/Titanium/mobilesdk/osx/ に展開する
-        ※ 新しいバージョンがある場合基本そちらを展開してください
-
      [自動化するかどうか]
      require:
      - https://github.com/caolan/async
@@ -21,18 +15,18 @@
        > sudo npm install argv
 
      setup:
-     > ./tibuild.js -p [yyc|yychat] -a setup
+     > ./tibuild.js -p [project_name] -a setup
 
      usage:
      > cd [tibuild.js dir]
      > ./tibuild.js => run on simulator for default project
-     > ./tibuild.js -p yychat => run yyc_chat project
+     > ./tibuild.js -p project_name => run project
      > ./tibuild.js -b [adhoc|dev|inhouse|appstore] => build for distribution
      > ./tibuild.js -b adhoc --deploygate => deploy to deploygate by mixi
 
      overrride_build_option:
      > ./tibuild.js _f= => overrride force build
-     > ./tibuild.js __log-level=trace -p yychat => overrride output log-level
+     > ./tibuild.js __log-level=trace -p project_name => overrride output log-level
 
      show options:
      > ./tibuild.js -h
@@ -95,14 +89,14 @@ var options = argv.option(
             type: 'string',
             short: 'p',
             description: 'target project',
-            example: 'tibuild.js -p yyc'
+            example: 'tibuild.js -p project_name'
         },
         {
             name: 'build',
             type: 'string',
             short: 'b',
             description: 'build type',
-            example: './tibuild.js -p yyc -b adhoc'
+            example: './tibuild.js -p project_name -b adhoc'
         },
         {
             name: 'action',
