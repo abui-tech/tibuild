@@ -357,32 +357,40 @@ Commands.prototype.setup = function (argv) {
             },
             function (callback) {
                 var frameworks_dir = project_dir + "/frameworks";
-                console.log(frameworks_dir);
-                methods.exec('find ./modules/iphone -name "module.xcconfig" | xargs grep -l " \\-F\\""', function (err, stdout, stderr) {
-                    if ( stderr ) {
-                        console.log( stderr ) || process.exit();
-                    } else {
-                        var replace_framework_ref_callbacks = [];
-                        stdout.trim().split(/\r\n|\r|\n/).forEach(function (path) {
-                            replace_framework_ref_callbacks.push(function (callback2) {
-                                modules.fs.readFile(path, 'utf8', function (err, text) {
-                                    if ( err ) {
+                var has_frameworks_dir = false;
+                try {
+                    modules.fs.statSync( frameworks_dir );
+                    has_frameworks_dir = true;
+                } catch (e) {}
+                if ( has_frameworks_dir ) {
+                    methods.exec('find ./modules/iphone -name "module.xcconfig" | xargs grep -l " \\-F\\""', function (err, stdout, stderr) {
+                        if ( stderr ) {
+                            console.log( stderr ) || process.exit();
+                        } else {
+                            var replace_framework_ref_callbacks = [];
+                            stdout.trim().split(/\r\n|\r|\n/).forEach(function (path) {
+                                replace_framework_ref_callbacks.push(function (callback2) {
+                                    modules.fs.readFile(path, 'utf8', function (err, text) {
+                                        if ( err ) {
 
-                                    } else {
-                                        modules.fs.writeFile(path, text.replace(/ -F"(.*?)"/, ' -F"' + frameworks_dir + '"'), function (err) {
-                                            var old_frameworks_dir = RegExp.$1;
-                                            err ? console.log( err ) || process.exit() : console.log('rewrite framework ref dir: ' + path + " ::: [" + old_frameworks_dir + " => " + frameworks_dir + "]") || callback2();
-                                        });
-                                    }
+                                        } else {
+                                            modules.fs.writeFile(path, text.replace(/ -F"(.*?)"/, ' -F"' + frameworks_dir + '"'), function (err) {
+                                                var old_frameworks_dir = RegExp.$1;
+                                                err ? console.log( err ) || process.exit() : console.log('rewrite framework ref dir: ' + path + " ::: [" + old_frameworks_dir + " => " + frameworks_dir + "]") || callback2();
+                                            });
+                                        }
+                                    });
                                 });
                             });
-                        });
-                        modules.async.series(replace_framework_ref_callbacks, function (err, results) {
-                            if (err) { throw err; }
-                            callback();
-                        });
-                    }
-                });
+                            modules.async.series(replace_framework_ref_callbacks, function (err, results) {
+                                if (err) { throw err; }
+                                callback();
+                            });
+                        }
+                    }); 
+                } else {
+                    callback();
+                }
             },
             function (callback) {
                 methods.exec('titanium clean', function (err, stdout, stderr) {
