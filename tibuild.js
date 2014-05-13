@@ -335,25 +335,40 @@ Commands.prototype.setup = function (argv) {
                 }
             },
             function (callback) {
-                methods.exec('find ./source -name "*.zip"', function (err, stdout, stderr) {
-                    if ( stderr ) {
-                        console.log( stderr ) || process.exit();
-                    } else {
-                        var unzip_source_callbacks = [];
-                        stdout.trim().split(/\r\n|\r|\n/).forEach(function (path) {
-                            unzip_source_callbacks.push(function (callback2) {
-                                methods.exec('unzip -o -d ./ ' + path, function (err, stdout, stderr) {
-                                    console.log(stdout);
-                                    callback2();
+                var module_sources_dir = '',
+                    sources_dir_names = ['source', 'sources', 'module', 'zip', 'zips']
+                ;
+                for ( var i = 0, l = sources_dir_names.length; i < l; i++ ) {
+                    try {
+                        modules.fs.statSync( project_dir + "/" + sources_dir_names[i] );
+                        module_sources_dir = sources_dir_names[i];
+                        break;
+                    } catch (e) {}
+                }
+                if ( module_sources_dir.length == 0 ) {
+                    console.log('module source dir is not found');
+                    callback();
+                } else {
+                    methods.exec('find ./' + module_sources_dir + ' -name "*.zip"', function (err, stdout, stderr) {
+                        if ( stderr ) {
+                            console.log( stderr ) || process.exit();
+                        } else {
+                            var unzip_source_callbacks = [];
+                            stdout.trim().split(/\r\n|\r|\n/).forEach(function (path) {
+                                unzip_source_callbacks.push(function (callback2) {
+                                    methods.exec('unzip -o -d ./ ' + path, function (err, stdout, stderr) {
+                                        console.log(stdout);
+                                        callback2();
+                                    });
                                 });
                             });
-                        });
-                        modules.async.series(unzip_source_callbacks, function (err, results) {
-                            if (err) { throw err; }
-                            callback();
-                        });
-                    }
-                });
+                            modules.async.series(unzip_source_callbacks, function (err, results) {
+                                if (err) { throw err; }
+                                callback();
+                            });
+                        }
+                    });
+                }
             },
             function (callback) {
                 var frameworks_dir = project_dir + "/frameworks";
