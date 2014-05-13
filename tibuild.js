@@ -32,14 +32,14 @@
      > ./tibuild.js -h
 ****/
 
-/*
-// global variables
-var app_config = {}, project_dir = "";
-
 // require modules
-var require_modules = ['argv', 'readline', 'fs', 'path', 'child_process', 'async'],
+var require_modules = ['argv', 'readline', 'fs', 'child_process', 'async'],
     modules = {},
-    unload_modules = []
+    unload_modules = [],
+    methods = {},
+    app_config = {},
+    project_dir = "",
+    script_path = process.argv[1]
 ;
 
 require_modules.forEach(function (module) {
@@ -49,22 +49,19 @@ require_modules.forEach(function (module) {
         unload_modules.push( module );
     }
 });
-*/
 
-var argv = argv = require('argv'),
-    readline = require('readline'),
-    rl = readline.createInterface(process.stdin, process.stdout),
-    fs = require('fs'),
-    path = require('path'),
-    exec = require('child_process').exec,
-    spawn = require('child_process').spawn,
-    async = require('async'),
-    app_config = {},
-    project_dir = "",
-    script_path = process.argv[1]
-;
+if ( unload_modules.length ) {
+    console.log("please install below modules:\n" + unload_modules.map(function(module_name){ return "- " + module_name + "\n> npm install -g " + module_name; }).join('\n'));
+    process.exit();
+}
 
-var options = argv.option(
+methods = {
+    rl: modules.readline.createInterface(process.stdin, process.stdout),
+    exec: modules.child_process.exec,
+    spawn: modules.child_process.spawn
+};
+
+var options = modules.argv.option(
     [
         {
             name: 'testflight',
@@ -119,10 +116,10 @@ var overrride_build_options = process.argv.filter(function (argv) {
     return /^_+/.test( argv ) && /=/.test( argv );
 });
 
-async.series(
+modules.async.series(
     [
         function (callback) {
-            exec('which titanium', function (err, stdout, stderr) {
+            methods.exec('which titanium', function (err, stdout, stderr) {
                 if ( /titanium/.test( stdout ) ) {
                     callback();
                 } else {
@@ -131,16 +128,16 @@ async.series(
             });
         },
         function (callback) {
-            exec('titanium status', function (err, stdout, stderr) {
+            methods.exec('titanium status', function (err, stdout, stderr) {
                 if ( /logged out/.test( stdout ) ) {
                     var username, password;
-                    rl.question("user: ", function (_username) {
+                    methods.rl.question("user: ", function (_username) {
                         username = _username;
-                        rl.question('password: ', function (_password) {
-                            rl.close();
+                        methods.rl.question('password: ', function (_password) {
+                            methods.rl.close();
                             password = _password;
                             if ( username && password ) {
-                                exec('titanium login ' + username + ' ' + password, function (err, stdout, stderr) {
+                                methods.exec('titanium login ' + username + ' ' + password, function (err, stdout, stderr) {
                                     if ( /Logged in successfully/.test( stdout ) ) {
                                         console.log(stdout) || callback();
                                     } else {
@@ -161,7 +158,7 @@ async.series(
             });
         },
         function (callback) {
-            fs.readFile( __dirname + '/tibuild.config.js', 'utf8', function (err, text) {
+            modules.fs.readFile( __dirname + '/tibuild.config.js', 'utf8', function (err, text) {
                 if ( err ) {
                     console.log(err);
                     process.exit();
@@ -190,7 +187,7 @@ async.series(
                     while ( /\//.test( copied_script_path ) ) {
                         if ( copied_script_path = copied_script_path.slice(0, copied_script_path.lastIndexOf('/')) ) {
                             try {
-                                fs.statSync( project_dir = ( copied_script_path + "/" + project ) );
+                                modules.fs.statSync( project_dir = ( copied_script_path + "/" + project ) );
                                 break;
                             } catch (e) {
                                 // next
@@ -222,27 +219,27 @@ async.series(
             var branch = options.branch || app_config.branch;
             //return callback();
             if ( branch ) {
-                async.series(
+                modules.async.series(
                     [
                         function (child_callback) {
-                            exec('which git', function (err, stdout, stderr) {
+                            methods.exec('which git', function (err, stdout, stderr) {
                                 /git/.test( stdout ) ? child_callback() : console.log(stderr||stdout) || process.exit();
                             });
                         },
                         function (child_callback) {
-                            exec('git symbolic-ref --short HEAD', function (err, stdout, stderr) {
+                            methods.exec('git symbolic-ref --short HEAD', function (err, stdout, stderr) {
                                 stdout = ( stdout || "" ).trim();
                                 ( stdout == branch ? console.log("[SUCCESS] already switched branch: " + stdout) || callback() : child_callback() );
                             });
                         },
                         function (child_callback) {
-                            exec('git checkout ' + branch, function (err, stdout, stderr) {
+                            methods.exec('git checkout ' + branch, function (err, stdout, stderr) {
                                 console.log( ( stdout || stderr ).trim() );
                                 child_callback();
                             });
                         },
                         function (child_callback) {
-                            exec('git symbolic-ref --short HEAD', function (err, stdout, stderr) {
+                            methods.exec('git symbolic-ref --short HEAD', function (err, stdout, stderr) {
                                 stdout = ( stdout || "" ).trim();
                                 console.log('[' + ( stdout == branch ? "SUCCESS" : "FAILED" ) + '] switched branch: ' + stdout);
                                 callback();
@@ -259,11 +256,11 @@ async.series(
         },
         function (callback) {
             var action = options.action || "build";
-            async.series(
+            modules.async.series(
                 [
                     function (callback) {
                         if ( app_config.hasOwnProperty('use_sdk') ) {
-                            exec('titanium sdk select ' + app_config.use_sdk, function (err, stdout, stderr) {
+                            methods.exec('titanium sdk select ' + app_config.use_sdk, function (err, stdout, stderr) {
                                 stderr ? console.log( stderr ) || process.exit() : callback();
                             });
                         } else {
@@ -296,11 +293,11 @@ async.series(
 
 function Commands () {}
 Commands.prototype.setup = function (argv) {
-    async.series(
+    modules.async.series(
         [
             function (callback) {
                 var require_commands = ['find', 'unzip', 'xargs', 'grep'];
-                exec('which ' + require_commands.join(' '), function (err, stdout, stderr) {
+                methods.exec('which ' + require_commands.join(' '), function (err, stdout, stderr) {
                     if ( require_commands.every(function (command) {
                         return new RegExp( command ).test( stdout );
                     }) ) {
@@ -313,10 +310,10 @@ Commands.prototype.setup = function (argv) {
             function (callback) {
                 var module_dir_name = "modules";
                 try {
-                    fs.statSync( project_dir + "/" + module_dir_name );
+                    modules.fs.statSync( project_dir + "/" + module_dir_name );
                     callback();
                 } catch (e) {
-                    exec('mkdir ' + project_dir + "/" + module_dir_name, function (err, stdout, stderr) {
+                    methods.exec('mkdir ' + project_dir + "/" + module_dir_name, function (err, stdout, stderr) {
                         if ( stderr ) {
                             console.log( stderr ) || process.exit();
                         } else {
@@ -326,20 +323,20 @@ Commands.prototype.setup = function (argv) {
                 }
             },
             function (callback) {
-                exec('find ./source -name "*.zip"', function (err, stdout, stderr) {
+                methods.exec('find ./source -name "*.zip"', function (err, stdout, stderr) {
                     if ( stderr ) {
                         console.log( stderr ) || process.exit();
                     } else {
                         var unzip_source_callbacks = [];
                         stdout.trim().split(/\r\n|\r|\n/).forEach(function (path) {
                             unzip_source_callbacks.push(function (callback2) {
-                                exec('unzip -o -d ./ ' + path, function (err, stdout, stderr) {
+                                methods.exec('unzip -o -d ./ ' + path, function (err, stdout, stderr) {
                                     console.log(stdout);
                                     callback2();
                                 });
                             });
                         });
-                        async.series(unzip_source_callbacks, function (err, results) {
+                        modules.async.series(unzip_source_callbacks, function (err, results) {
                             if (err) { throw err; }
                             callback();
                         });
@@ -349,18 +346,18 @@ Commands.prototype.setup = function (argv) {
             function (callback) {
                 var frameworks_dir = project_dir + "/frameworks";
                 console.log(frameworks_dir);
-                exec('find ./modules/iphone -name "module.xcconfig" | xargs grep -l " \\-F\\""', function (err, stdout, stderr) {
+                methods.exec('find ./modules/iphone -name "module.xcconfig" | xargs grep -l " \\-F\\""', function (err, stdout, stderr) {
                     if ( stderr ) {
                         console.log( stderr ) || process.exit();
                     } else {
                         var replace_framework_ref_callbacks = [];
                         stdout.trim().split(/\r\n|\r|\n/).forEach(function (path) {
                             replace_framework_ref_callbacks.push(function (callback2) {
-                                fs.readFile(path, 'utf8', function (err, text) {
+                                modules.fs.readFile(path, 'utf8', function (err, text) {
                                     if ( err ) {
 
                                     } else {
-                                        fs.writeFile(path, text.replace(/ -F"(.*?)"/, ' -F"' + frameworks_dir + '"'), function (err) {
+                                        modules.fs.writeFile(path, text.replace(/ -F"(.*?)"/, ' -F"' + frameworks_dir + '"'), function (err) {
                                             var old_frameworks_dir = RegExp.$1;
                                             err ? console.log( err ) || process.exit() : console.log('rewrite framework ref dir: ' + path + " ::: [" + old_frameworks_dir + " => " + frameworks_dir + "]") || callback2();
                                         });
@@ -368,7 +365,7 @@ Commands.prototype.setup = function (argv) {
                                 });
                             });
                         });
-                        async.series(replace_framework_ref_callbacks, function (err, results) {
+                        modules.async.series(replace_framework_ref_callbacks, function (err, results) {
                             if (err) { throw err; }
                             callback();
                         });
@@ -376,7 +373,7 @@ Commands.prototype.setup = function (argv) {
                 });
             },
             function (callback) {
-                exec('titanium clean', function (err, stdout, stderr) {
+                methods.exec('titanium clean', function (err, stdout, stderr) {
                     console.log(stdout || stderr) || callback();
                 });
             },
@@ -398,8 +395,8 @@ Commands.prototype.build = function () {
     if ( use_config = app_config.build[ options.build || app_config.build_default ] ) {
         var titanium_args = ['build'];
         if ( use_config.hasOwnProperty('identifier') || use_config.hasOwnProperty('teamid') ) {
-            use_config.hasOwnProperty('identifier') && exec('sed -i.tiorig "s/' + use_config.identifier[0] + '/' + use_config.identifier[1] + '/g" Info.plist tiapp.xml Entitlements.plist', function (err, stdout, stderr) {});
-            use_config.hasOwnProperty('teamid') && exec('sed -i.tibk "s/' + use_config.teamid[0] + '/' + use_config.teamid[1] + '/g" Entitlements.plist', function (err, stdout, stderr) {});
+            use_config.hasOwnProperty('identifier') && methods.exec('sed -i.tiorig "s/' + use_config.identifier[0] + '/' + use_config.identifier[1] + '/g" Info.plist tiapp.xml Entitlements.plist', function (err, stdout, stderr) {});
+            use_config.hasOwnProperty('teamid') && methods.exec('sed -i.tibk "s/' + use_config.teamid[0] + '/' + use_config.teamid[1] + '/g" Entitlements.plist', function (err, stdout, stderr) {});
             ['identifier', 'teamid'].forEach(function (x) {
                 delete use_config[x];
             });
@@ -418,7 +415,7 @@ Commands.prototype.build = function () {
             use_config[key] && titanium_args.push( use_config[key] );
         });
         console.log('> titanium ' + titanium_args.join(' '));
-        var titanium_build = spawn('titanium', titanium_args);
+        var titanium_build = methods.spawn('titanium', titanium_args);
         var package_name;
         titanium_build.stdout.on('data', function (data) {
             var log_text = data.toString().trim();
@@ -428,15 +425,15 @@ Commands.prototype.build = function () {
                     is_inhouse = false;
                     var arguments_callee = arguments.callee;
                     var saved_log_text = log_text;
-                    async.series(
+                    modules.async.series(
                         [
                             function (callback) {
-                                exec('ls | grep .tibk', function (err, stdout, stderr) {
+                                methods.exec('ls | grep .tibk', function (err, stdout, stderr) {
                                     var fnames = ( stdout || "" ).trim().split(/\r\n|\r|\n/);
                                     var fcount = fnames.length;
                                     var finished_fcount = 0;
                                     fnames.forEach(function (fname) {
-                                        fs.unlink(fname, function(err){
+                                        modules.fs.unlink(fname, function(err){
                                             err && console.log(err);
                                             if ( ++finished_fcount == fcount ) {
                                                 callback();
@@ -446,14 +443,14 @@ Commands.prototype.build = function () {
                                 });
                             },
                             function (callback) {
-                                exec('ls | grep .tiorig', function (err, stdout, stderr) {
+                                methods.exec('ls | grep .tiorig', function (err, stdout, stderr) {
                                     var fnames = ( stdout || "" ).trim().split(/\r\n|\r|\n/);
                                     var fcount = fnames.length;
                                     var finished_fcount = 0;
                                     fnames.forEach(function (fname) {
                                         var orig_fname = fname.replace('.tiorig', '');
-                                        fs.unlink(orig_fname, function(err){
-                                            err ? console.log( err ) : exec('mv ' + fname + ' ' + orig_fname, function () {
+                                        modules.fs.unlink(orig_fname, function(err){
+                                            err ? console.log( err ) : methods.exec('mv ' + fname + ' ' + orig_fname, function () {
                                                 if ( ++finished_fcount == fcount ) {
                                                     callback();
                                                 }
@@ -472,10 +469,10 @@ Commands.prototype.build = function () {
                     );
                 } else if ( options.testflight && app_config.testflight && package_name ) {
                     var testflight_opt = app_config.testflight.hasOwnProperty( options.testflight ) ? app_config.testflight[ options.testflight ] : app_config.testflight.default;
-                    async.series(
+                    modules.async.series(
                         [
                             function (callback) {
-                                exec('which curl', function (err, stdout, stderr) {
+                                methods.exec('which curl', function (err, stdout, stderr) {
                                     if ( /curl/.test( stdout ) ) {
                                         callback();
                                     } else {
@@ -493,14 +490,14 @@ Commands.prototype.build = function () {
                                 Object.keys( testflight_opt ).forEach(function (key) {
                                     command += ( " -F " + key + "='" + testflight_opt[key] + "'" );
                                 });
-                                async.series(
+                                modules.async.series(
                                     [
                                         function (callback2) {
                                             if ( options.message ) {
                                                 command += " -F notes='" + options.message + "'";
                                                 callback2();
                                             } else {
-                                                rl.question("note: ", function (note) {
+                                                methods.rl.question("note: ", function (note) {
                                                     note = note || "";
                                                     command += " -F notes='" + note + "'";
                                                     callback2();
@@ -510,7 +507,7 @@ Commands.prototype.build = function () {
                                         function (callback2) {
                                             console.log( command );
 
-                                            exec( command, function (err, stdout, stderr) {
+                                            methods.exec( command, function (err, stdout, stderr) {
                                                 console.log( err ? err : stdout );
                                                 process.exit();
                                             });
@@ -531,7 +528,7 @@ Commands.prototype.build = function () {
                     );
                 } else if ( options.deploygate && app_config.deploygate && package_name ) {
                     var deploygate_opt = app_config.deploygate.hasOwnProperty( options.deploygate ) ? app_config.deploygate[ options.deploygate ] : app_config.deploygate.default;
-                    async.series(
+                    modules.async.series(
                         [
                             function (callback) {
                                 var command = 'curl -F "file=@{FILE}" -F "token={token}" -F "message={note}" {end_point}'
@@ -539,14 +536,14 @@ Commands.prototype.build = function () {
                                     .replace("{token}", deploygate_opt.token)
                                     .replace("{end_point}", deploygate_opt.end_point)
                                 ;
-                                async.series(
+                                modules.async.series(
                                     [
                                         function (callback2) {
                                             if ( options.message ) {
                                                 command = command.replace("{note}", options.message);
                                                 callback2();
                                             } else {
-                                                rl.question("note: ", function (note) {
+                                                methods.rl.question("note: ", function (note) {
                                                     note = note || "";
                                                     command = command.replace("{note}", note);
                                                     callback2();
@@ -556,7 +553,7 @@ Commands.prototype.build = function () {
                                         function (callback2) {
                                             console.log( command );
 
-                                            exec( command, function (err, stdout, stderr) {
+                                            methods.exec( command, function (err, stdout, stderr) {
                                                 console.log( err ? err : stdout );
                                                 process.exit();
                                             });
