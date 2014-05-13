@@ -493,18 +493,34 @@ Commands.prototype.build = function () {
                                 Object.keys( testflight_opt ).forEach(function (key) {
                                     command += ( " -F " + key + "='" + testflight_opt[key] + "'" );
                                 });
-                                rl.question("note: ", function (note) {
-                                    note = note || "";
-                                    command += " -F notes='" + note + "'";
-                                    rl.close();
+                                async.series(
+                                    [
+                                        function (callback2) {
+                                            if ( options.message ) {
+                                                command += " -F notes='" + options.message + "'";
+                                                callback2();
+                                            } else {
+                                                rl.question("note: ", function (note) {
+                                                    note = note || "";
+                                                    command += " -F notes='" + note + "'";
+                                                    callback2();
+                                                });
+                                            }
+                                        },
+                                        function (callback2) {
+                                            console.log( command );
 
-                                    console.log( command );
-
-                                    exec( command, function (err, stdout, stderr) {
-                                        console.log( err ? err : stdout );
+                                            exec( command, function (err, stdout, stderr) {
+                                                console.log( err ? err : stdout );
+                                                process.exit();
+                                            });
+                                        }
+                                    ],
+                                    function (err, results) {
+                                        if (err) { console.log(err); throw err; }
                                         process.exit();
-                                    });
-                                });
+                                    }
+                                );
                             }
                         ],
                         function (err, results) {
@@ -523,16 +539,34 @@ Commands.prototype.build = function () {
                                     .replace("{token}", deploygate_opt.token)
                                     .replace("{end_point}", deploygate_opt.end_point)
                                 ;
-                                rl.question("note: ", function (note) {
-                                    note = note || "";
-                                    command = command.replace("{note}", note);
-                                    console.log( command );
+                                async.series(
+                                    [
+                                        function (callback2) {
+                                            if ( options.message ) {
+                                                command = command.replace("{note}", options.message);
+                                                callback2();
+                                            } else {
+                                                rl.question("note: ", function (note) {
+                                                    note = note || "";
+                                                    command = command.replace("{note}", note);
+                                                    callback2();
+                                                });
+                                            }
+                                        },
+                                        function (callback2) {
+                                            console.log( command );
 
-                                    exec( command, function (err, stdout, stderr) {
-                                        console.log( err ? err : stdout );
+                                            exec( command, function (err, stdout, stderr) {
+                                                console.log( err ? err : stdout );
+                                                process.exit();
+                                            });
+                                        }
+                                    ],
+                                    function (err, results) {
+                                        if (err) { console.log(err); throw err; }
                                         process.exit();
-                                    });
-                                });
+                                    }
+                                );
                             }
                         ],
                         function (err, results) {
