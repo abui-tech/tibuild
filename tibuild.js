@@ -104,6 +104,13 @@ var options = argv.option(
             short: 'a',
             description: 'build action',
             example: './tibuild.js -a setup'
+        },
+        {
+            name: 'message',
+            type: 'string',
+            short: 'm',
+            description: 'update message',
+            example: './tibuild.js -b adhoc --deploygate -m xyz'
         }
     ]
 ).run().options;
