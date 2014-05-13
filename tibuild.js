@@ -158,6 +158,18 @@ modules.async.series(
             });
         },
         function (callback) {
+            try {
+                modules.fs.statSync( __dirname + '/tibuild.config.js' );
+                callback();
+            } catch (e) {
+                methods.exec('ln -s ' + __dirname + '/../tibuild.config.js ' + __dirname + '/tibuild.config.js', function (err, stdout, stderr) {
+                    var message = ( stdout || stderr || "" ).trim();
+                    if ( message ) { console.log(message); }
+                    callback();
+                });
+            }
+        },
+        function (callback) {
             modules.fs.readFile( __dirname + '/tibuild.config.js', 'utf8', function (err, text) {
                 if ( err ) {
                     console.log(err);
