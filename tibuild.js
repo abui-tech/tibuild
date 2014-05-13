@@ -7,13 +7,6 @@
      - appceleratorにログイン済み
        => titanium login [email] [pass]
 
-     [自動化するかどうか]
-     require:
-     - https://github.com/caolan/async
-       > sudo npm install async
-     - https://www.npmjs.org/package/argv
-       > sudo npm install argv
-
      setup:
      > ./tibuild.js -p [project_name] -a setup
 
