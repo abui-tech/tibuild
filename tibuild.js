@@ -304,6 +304,21 @@ Commands.prototype.setup = function (argv) {
                 });
             },
             function (callback) {
+                var module_dir_name = "modules";
+                try {
+                    fs.statSync( project_dir + "/" + module_dir_name );
+                    callback();
+                } catch (e) {
+                    exec('mkdir ' + project_dir + "/" + module_dir_name, function (err, stdout, stderr) {
+                        if ( stderr ) {
+                            console.log( stderr ) || process.exit();
+                        } else {
+                            callback();
+                        }
+                    });
+                }
+            },
+            function (callback) {
                 exec('find ./source -name "*.zip"', function (err, stdout, stderr) {
                     if ( stderr ) {
                         console.log( stderr ) || process.exit();
