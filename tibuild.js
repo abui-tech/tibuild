@@ -101,6 +101,12 @@ var options = modules.argv.option(
             short: 'm',
             description: 'update message',
             example: './tibuild.js -b adhoc --deploygate -m xyz'
+        },
+        {
+            name: 'test',
+            type: 'string',
+            description: 'do unit test before build proccess runs',
+            example: './tibuild.js -p project_name -b adhoc --deploygate --test tio2'
         }
     ]
 ).run().options;
@@ -261,7 +267,8 @@ modules.async.series(
         },
         function (callback) {
             var action = options.action || "build";
-            modules.async.series(
+            var commands = new Commands();
+            modules.async.waterfall(
                 [
                     function (callback) {
                         if ( app_config.hasOwnProperty('use_sdk') ) {
@@ -273,7 +280,21 @@ modules.async.series(
                         }
                     },
                     function (callback) {
-                        var commands = new Commands();
+                        if ( options.test ) {
+                            commands._doUnitTestAsync(callback);
+                        } else {
+                            // through tesing
+                            callback(null, true);
+                        }
+                    },
+                    function (isGreen, callback) {
+                        if (!isGreen) {
+                            console.log('[ERROR] Unit test failed.');
+                            process.exit();
+                        }
+                        callback();
+                    },
+                    function (callback) {
                         if ( commands[ action ] ) {
                             console.log('[INFO] project dir is ' + project_dir + " : " + action);
                             commands[ action ]();
@@ -621,5 +642,54 @@ Commands.prototype.build = function () {
     }
 }
 
+Commands.prototype.unittest = function (dontExit) {
+    var self = this;
+    modules.async.series([
+        function (callback) {
+            self._doUnitTestAsync(callback);
+        }
+    ], function (err, results) {
+        if (err) { console.log(err); throw err; }
+        console.log('series all done.');
+        if (!dontExit)
+            process.exit();
+    });
+};
+
+Commands.prototype._doUnitTestAsync = function (callback) {
+    var engineName = (options.test === "true") ? "tio2" : options.test;
+    console.log("[INFO] Unit test is running. Take a several minutes...");
+    var testEngine = unitTestEngines[engineName];
+    if (testEngine){
+        methods.exec(testEngine.command.replace("{target_dir}", project_dir), function (err, stdout, stderr) {
+            var isGreen = testEngine.callback(err, stdout, stderr);
+            callback(null, isGreen);
+        });
+    } else {
+        console.log("[ERROR] Test Engine %s is not supported.", engineName);
+        process.exit();
+    }
+};
 
 
+var unitTestEngines = {
+    tio2: {
+        command:"tio2 --quiet {target_dir}",
+        callback: function (err, stdout, stderr) {
+            console.log(stdout);
+            var testResult = JSON.parse(stdout);
+            var isGreen = testResult.results.every(function (t) {
+                return t.state === "passed";
+            });
+            console.log(isGreen ? "[INFO] All of tests passed." : "[WARN] Some tests haven't pass.");
+            if (!isGreen) {
+                var pendings = testResult.results.filter(function (t) {
+                    return !t.state;
+                });
+                if (pendings.length)
+                    console.log("[INFO] %d tests are still pending.", pendings.length);
+            }
+            return isGreen;
+        }
+    }
+};
