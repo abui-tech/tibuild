@@ -646,6 +646,7 @@ Commands.prototype.unittest = function (dontExit) {
     var self = this;
     modules.async.series([
         function (callback) {
+            options.test = options.test || "true";
             self._doUnitTestAsync(callback);
         }
     ], function (err, results) {
