@@ -69,6 +69,12 @@ var options = modules.argv.option(
             example: './tibuild.js build adhoc --deploygate'
         },
         {
+            name: 'notice',
+            type: 'string',
+            description: 'will be notified after the upload',
+            example: './tibuild.js -b adhoc --deploygate --notice=ikachan'
+        },
+        {
             name: 'build-list',
             type: 'string',
             description: 'output build list',
@@ -603,9 +609,17 @@ Commands.prototype.build = function () {
                                             console.log( command );
 
                                             methods.exec( command, function (err, stdout, stderr) {
-                                                console.log( err ? err : stdout );
+                                                if ( err ) {
+                                                    console.log('[ERROR] ' + err);
+                                                } else {
+                                                    var res = JSON.parse( stdout ), results = res.results;
+                                                    console.log(res);
+                                                }
                                                 process.exit();
                                             });
+                                        },
+                                        function (callback2) {
+                                            
                                         }
                                     ],
                                     function (err, results) {
