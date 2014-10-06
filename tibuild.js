@@ -446,6 +446,7 @@ Commands.prototype.setup = function (argv) {
 
 Commands.prototype.build = function () {
     var is_inhouse = false;
+    var is_simulator = false;
     var use_config;
     if ( use_config = app_config.build[ options.build || app_config.build_default ] ) {
         var titanium_args = ['build'];
@@ -475,7 +476,7 @@ Commands.prototype.build = function () {
         titanium_build.stdout.on('data', function (data) {
             var log_text = data.toString().trim();
             console.log( log_text );
-            if ( log_text.match(/Project built successfully/) ) {
+            if ( log_text.match(/Project built successfully/) && !is_simulator ) {
                 if ( is_inhouse ) {
                     is_inhouse = false;
                     var arguments_callee = arguments.callee;
@@ -606,16 +607,46 @@ Commands.prototype.build = function () {
                                             }
                                         },
                                         function (callback2) {
-                                            console.log( command );
+                                            console.log('> %s', command);
 
                                             methods.exec( command, function (err, stdout, stderr) {
+                                                var res;
+                                                try {
+                                                    res = JSON.parse( stdout );
+                                                } catch (e) {
+                                                    err = e;
+                                                }
                                                 if ( err ) {
                                                     console.log('[ERROR] ' + err);
+                                                    process.exit();
                                                 } else {
-                                                    var res = JSON.parse( stdout ), results = res.results;
-                                                    console.log(res);
+                                                    console.log( res );
+                                                    var results = res.results, message = results.message, app_name = results.name, app_package_name = results.package_name, revision = results.revision, version_code = results.version_code;
+                                                    if ( app_config.hasOwnProperty('notice') && options.notice ) {
+                                                        var notice_type = app_config.notice.hasOwnProperty( options.notice ) ? options.notice : app_config.notice.default,
+                                                            notice_config = app_config.notice[ notice_type ]
+                                                        ;
+                                                        var message = ( notice_config.message || '' )
+                                                            .replace('{message}', message)
+                                                            .replace('{app_name}', app_name)
+                                                            .replace('{app_package_name}', app_package_name)
+                                                            .replace('{revision}', revision)
+                                                            .replace('{version_code}', version_code)
+                                                        ;
+                                                        var notice_command = 'curl -d "channel={channel}" -d "message={message}" {end_point}'
+                                                            .replace('{channel}', notice_config.channel)
+                                                            .replace('{message}', message)
+                                                            .replace('{end_point}', notice_config.end_point)
+                                                        ;
+                                                        console.log('> %s', notice_command);
+                                                        methods.exec( notice_command, function (err, stdout, stderr) {
+                                                            console.log( err || stdout );
+                                                            process.exit();
+                                                        });
+                                                    } else {
+                                                        process.exit();
+                                                    }
                                                 }
-                                                process.exit();
                                             });
                                         },
                                         function (callback2) {
@@ -640,6 +671,8 @@ Commands.prototype.build = function () {
                 }
             } else if ( package_name = ( log_text.match(/Package location: .*\/(.*\.ipa)/) || ["", ""] )[1] ) {
                 console.log('[INFO] Package name: ' + package_name);
+            } else if ( log_text.match(/Launching iOS Simulator/) ) {
+                is_simulator = true;
             }
         });
         titanium_build.stderr.on('data', function(data) {
