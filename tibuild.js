@@ -673,6 +673,8 @@ Commands.prototype.build = function () {
                 console.log('[INFO] Package name: ' + package_name);
             } else if ( log_text.match(/Launching iOS Simulator/) ) {
                 is_simulator = true;
+            } else if ( log_text.match(/-- End simulator log/) ) {
+                process.exit();
             }
         });
         titanium_build.stderr.on('data', function(data) {
