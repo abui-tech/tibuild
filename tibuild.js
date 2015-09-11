@@ -133,34 +133,36 @@ modules.async.series(
             });
         },
         function (callback) {
-            methods.exec('titanium status', function (err, stdout, stderr) {
-                if ( /logged out/.test( stdout ) ) {
-                    var username, password;
-                    methods.rl.question("user: ", function (_username) {
-                        username = _username;
-                        methods.rl.question('password: ', function (_password) {
-                            methods.rl.close();
-                            password = _password;
-                            if ( username && password ) {
-                                methods.exec('titanium login ' + username + ' ' + password, function (err, stdout, stderr) {
-                                    if ( /Logged in successfully/.test( stdout ) ) {
-                                        console.log(stdout) || callback();
-                                    } else {
-                                        console.log('can not login to appcelerator...');
-                                        console.log(stdout);
-                                        process.exit();
-                                    }
-                                });
-                            } else {
-                                console.log('can not login to appcelerator...');
-                                process.exit();
-                            }
-                        });
-                    });
-                } else {
-                    callback();
-                }
-            });
+            callback();
+            // 4.1.0〜loginがdeprecatedになった為？コメントアウトでスキップする。
+            // methods.exec('titanium status', function (err, stdout, stderr) {
+            //     if ( /logged out/.test( stdout ) ) {
+            //         var username, password;
+            //         methods.rl.question("user: ", function (_username) {
+            //             username = _username;
+            //             methods.rl.question('password: ', function (_password) {
+            //                 methods.rl.close();
+            //                 password = _password;
+            //                 if ( username && password ) {
+            //                     methods.exec('titanium login ' + username + ' ' + password, function (err, stdout, stderr) {
+            //                         if ( /Logged in successfully/.test( stdout ) ) {
+            //                             console.log(stdout) || callback();
+            //                         } else {
+            //                             console.log('can not login to appcelerator...');
+            //                             console.log(stdout);
+            //                             process.exit();
+            //                         }
+            //                     });
+            //                 } else {
+            //                     console.log('can not login to appcelerator...');
+            //                     process.exit();
+            //                 }
+            //             });
+            //         });
+            //     } else {
+            //         callback();
+            //     }
+            // });
         },
         function (callback) {
             try {
